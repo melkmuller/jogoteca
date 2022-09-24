@@ -1,6 +1,9 @@
+import time
+
 from flask import render_template, request, redirect, session, flash, url_for
 from jogoteca import app, db
 from models import Jogos, Usuarios
+from helpers import recupera_imagem, deleta_arquivo
 
 
 @app.route('/')
@@ -18,11 +21,14 @@ def novo():
     return render_template('novo.html', titulo='Novo Jogo')
 
 
-@app.route('/editar')
-def editar():
+@app.route('/editar/<int:id>')
+def editar(id):
     if 'usuario_logado' not in session or session['usuario_logado'] is None:
         return redirect(url_for('login', proxima=url_for('editar')))
-    return render_template('editar.html', titulo='Editando Jogo')
+
+    jogo = Jogos.query.filter_by(id=id).first()
+    capa_jogo = recupera_imagem(id)
+    return render_template('editar.html', titulo='Editando Jogo', jogo=jogo, capa_jogo=capa_jogo)
 
 
 @app.route('/criar', methods=['POST', ])
@@ -40,12 +46,43 @@ def criar():
     db.session.add(novo_jogo)
     db.session.commit()
 
+    arquivo = request.files['arquivo']
+    upload_path = app.config['UPLOAD_PATH']
+    timestamp = time.time()
+    arquivo.save(f'{upload_path}/capa{jogo.id}-{timestamp}.jpg')
+
     return redirect(url_for('index'))
 
 
 @app.route('/atualizar', methods=['POST', ])
 def atualizar():
-    pass
+    jogo = Jogos.query.filter_by(id=request.form['id']).first()
+    jogo.nome = request['nome']
+    jogo.categoria = request['categoria']
+    jogo.console = request['console']
+
+    db.session.add(jogo)
+    db.session.commit()
+
+    arquivo = request.files['arquivo']
+    upload_path = app.config['UPLOAD_PATH']
+    timestamp = time.time()
+    deleta_arquivo(id)
+    arquivo.save(f'{upload_path}/capa{jogo.id}-{timestamp}.jpg')
+
+    return redirect(url_for('index'))
+
+
+@app.route('/deletar/<int:id>')
+def deletar(id):
+    if 'usuario_logado' not in session or session['usuario_logado'] is None:
+        return redirect(url_for('login'))
+
+    Jogos.query.filter_by(id=id).delete()
+    db.session.commit()
+    flash('Jogo deletado com sucesso')
+
+    return redirect(url_for('index'))
 
 
 @app.route('/login')
