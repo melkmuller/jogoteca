@@ -9,7 +9,8 @@ db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
 
 
-from views import *
+from views_jogo import *
+from views_user import *
 
 if __name__ == "__main__":
     app.run(debug=True)
